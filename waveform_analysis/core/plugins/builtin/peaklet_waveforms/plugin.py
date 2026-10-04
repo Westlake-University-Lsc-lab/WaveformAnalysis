@@ -250,7 +250,7 @@ def _classify_and_size_peaklets_numba(
 
 @njit(cache=True, nogil=True)
 def _fill_routed_peaklet_pool_numba(
-    pool64,
+    pool,
     rows,
     routes,
     piece_starts,
@@ -273,6 +273,7 @@ def _fill_routed_peaklet_pool_numba(
     max_wave_length,
 ):
     """Fill fast and canonical peaklets while preserving deterministic sums."""
+    scratch64 = np.empty(max_wave_length, dtype=np.float64)
     occupancy_values = np.empty(max_wave_length, dtype=np.float32)
     occupancy_bits = np.empty(max_wave_length, dtype=np.uint32)
     occupancy_source = np.empty(max_wave_length, dtype=np.int64)
@@ -291,6 +292,8 @@ def _fill_routed_peaklet_pool_numba(
         peaklet_time_start = rows[peaklet_id, 1]
         dt_ps = rows[peaklet_id, 3] * 1000
         pool_offset = rows[peaklet_id, 4]
+        for local_i in range(wave_length):
+            scratch64[local_i] = 0.0
 
         if routes[peaklet_id] == _ROUTE_FAST:
             for piece_i in range(piece_begin, piece_end):
@@ -304,7 +307,7 @@ def _fill_routed_peaklet_pool_numba(
                 if end <= start:
                     continue
                 abs_start = record_timestamp[rec_idx] + start * dt_ps
-                dst = pool_offset + (abs_start - peaklet_time_start) // dt_ps
+                dst = (abs_start - peaklet_time_start) // dt_ps
                 src = record_wave_offset[rec_idx] + start
                 baseline = record_baseline[rec_idx]
                 sign = record_sign[rec_idx]
@@ -312,8 +315,10 @@ def _fill_routed_peaklet_pool_numba(
                     signal = sign * (np.float32(wave_pool[src + sample_i]) - baseline)
                     if clip_negative_signal and signal < 0.0:
                         signal = np.float32(0.0)
-                    pool64[dst + sample_i] += np.float64(signal)
+                    scratch64[dst + sample_i] += np.float64(signal)
                     unique_samples += 1
+            for local_i in range(wave_length):
+                pool[pool_offset + local_i] = np.float32(scratch64[local_i])
             continue
 
         piece_i = piece_begin
@@ -370,8 +375,10 @@ def _fill_routed_peaklet_pool_numba(
 
             for local_i in range(wave_length):
                 if occupancy_stamp[local_i] == stamp:
-                    pool64[pool_offset + local_i] += np.float64(occupancy_values[local_i])
+                    scratch64[local_i] += np.float64(occupancy_values[local_i])
             piece_i = channel_end
+        for local_i in range(wave_length):
+            pool[pool_offset + local_i] = np.float32(scratch64[local_i])
 
     return -1, -1, -1, -1, np.float32(0.0), np.float32(0.0), unique_samples
 
@@ -454,7 +461,26 @@ def _fill_numba_piece_arrays(
     return 0, -1
 
 
-def _process_peaklet_batch(batch_data: dict) -> tuple[np.ndarray, np.ndarray]:
+_PEAKLET_WORKER_INPUTS: dict = {}
+
+
+def _initialize_peaklet_worker(inputs: dict) -> None:
+    """Retain read-only run inputs and build their lookup tables once per worker."""
+    global _PEAKLET_WORKER_INPUTS
+    inputs["record_lookup"] = RecordLookup(inputs["records"])
+    inputs["component_groups"] = _build_peaklet_component_csr(
+        inputs["components"], inputs["n_peaklets"]
+    )
+    hit_merged_components = inputs["hit_merged_components"]
+    inputs["hit_merged_components_index"] = (
+        _build_hit_merged_components_index(hit_merged_components)
+        if hit_merged_components is not None and len(hit_merged_components) > 0
+        else {}
+    )
+    _PEAKLET_WORKER_INPUTS = inputs
+
+
+def _process_peaklet_batch(batch_bounds: tuple[int, int]) -> tuple[np.ndarray, np.ndarray]:
     """
     Process a batch of peaklets in a separate process.
 
@@ -463,9 +489,8 @@ def _process_peaklet_batch(batch_data: dict) -> tuple[np.ndarray, np.ndarray]:
 
     Parameters
     ----------
-    batch_data : dict
-        Contains: peaklets, components, merged, records, wave_pool,
-                  hit_merged_components, hit_threshold
+    batch_bounds : tuple[int, int]
+        Half-open peaklet range; run inputs are installed by the worker initializer.
 
     Returns
     -------
@@ -474,8 +499,8 @@ def _process_peaklet_batch(batch_data: dict) -> tuple[np.ndarray, np.ndarray]:
     pool : np.ndarray
         Concatenated waveform pool for this batch
     """
-    peaklets = batch_data["peaklets"]
-    components = batch_data["components"]
+    batch_data = _PEAKLET_WORKER_INPUTS
+    start, end = batch_bounds
     merged = batch_data["merged"]
     records = batch_data["records"]
     wave_pool = batch_data["wave_pool"]
@@ -483,23 +508,15 @@ def _process_peaklet_batch(batch_data: dict) -> tuple[np.ndarray, np.ndarray]:
     hit_threshold = batch_data["hit_threshold"]
     clip_negative_signal = bool(batch_data.get("clip_negative_signal", False))
 
-    # Build hit_merged_components index if available
-    if hit_merged_components is not None and len(hit_merged_components) > 0:
-        hit_merged_components_index = _build_hit_merged_components_index(hit_merged_components)
-    else:
-        hit_merged_components_index = {}
-
-    # Store in batch_data for access in nested function
-    batch_data["hit_merged_components_index"] = hit_merged_components_index
-
     # Process using the same logic as _build_python
-    record_lookup = RecordLookup(records)
-    component_groups = _components_by_peaklet(components, len(peaklets))
+    record_lookup = batch_data["record_lookup"]
+    grouped_merged_indices, group_starts, group_ends = batch_data["component_groups"]
     rows: list[tuple[int, int, int, int, int, int]] = []
     pools: list[np.ndarray] = []
     wave_offset = 0
 
-    for peaklet_id, merged_indices in enumerate(component_groups):
+    for peaklet_id, source_id in enumerate(range(start, end)):
+        merged_indices = grouped_merged_indices[group_starts[source_id] : group_ends[source_id]]
         if len(merged_indices) == 0:
             rows.append((peaklet_id, 0, 0, 0, wave_offset, 0))
             continue
@@ -789,7 +806,7 @@ class PeakletWaveformPlugin(Plugin):
     provides = "peaklet_waveforms"
     depends_on = []  # 使用 resolve_depends_on() 动态解析
     description = "Build peaklet waveform index rows from records-backed hit_merged samples. Supports cross-record hits via component expansion."
-    version = "2.1.1"
+    version = "2.1.2"
     output_dtype = PEAKLET_WAVEFORMS_DTYPE
     save_when = "always"
     agent_doc = {
@@ -1326,7 +1343,7 @@ class PeakletWaveformPlugin(Plugin):
         if status != _STATUS_OK:
             self._raise_numba_status(int(status), int(status_peaklet))
 
-        pool64 = np.zeros(int(total_wave_length), dtype=np.float64)
+        pool = np.empty(int(total_wave_length), dtype=np.float32)
         kernel_started = time.perf_counter()
         (
             conflict_peaklet,
@@ -1337,7 +1354,7 @@ class PeakletWaveformPlugin(Plugin):
             other_value,
             unique_samples,
         ) = _fill_routed_peaklet_pool_numba(
-            pool64,
+            pool,
             waveform_rows,
             routes,
             piece_starts,
@@ -1381,7 +1398,6 @@ class PeakletWaveformPlugin(Plugin):
         waveforms = np.zeros(len(waveform_rows), dtype=PEAKLET_WAVEFORMS_DTYPE)
         for field_i, field in enumerate(PEAKLET_WAVEFORMS_DTYPE.names):
             waveforms[field] = waveform_rows[:, field_i]
-        pool = pool64.astype(np.float32)
         materialize_output_sec = time.perf_counter() - materialize_started
         total_sec = time.perf_counter() - started
         self._log_route_diagnostics(
@@ -2099,37 +2115,22 @@ class PeakletWaveformPlugin(Plugin):
 
         # Split peaklets into batches
         batch_size = max(1, n_peaklets // n_workers)
-        batches = []
-
-        for i in range(0, n_peaklets, batch_size):
-            end_idx = min(i + batch_size, n_peaklets)
-            batch_peaklet_ids = np.arange(i, end_idx)
-
-            # Filter components for this batch
-            batch_component_mask = np.isin(components["peak_id"], batch_peaklet_ids)
-            batch_components = components[batch_component_mask].copy()
-
-            # Remap peak_id to be 0-based within this batch
-            old_to_new = np.full(n_peaklets, -1, dtype=np.int64)
-            old_to_new[batch_peaklet_ids] = np.arange(len(batch_peaklet_ids))
-            batch_components["peak_id"] = old_to_new[batch_components["peak_id"]]
-
-            batches.append(
-                {
-                    "peaklets": peaklets[batch_peaklet_ids],
-                    "components": batch_components,
-                    "merged": merged,
-                    "records": records,
-                    "wave_pool": wave_pool,
-                    "hit_merged_components": getattr(self, "_hit_merged_components", None),
-                    "hit_threshold": getattr(self, "_hit_threshold", None),
-                    "clip_negative_signal": bool(getattr(self, "_clip_negative_signal", False)),
-                    "peaklet_id_offset": i,
-                }
-            )
+        batches = [(i, min(i + batch_size, n_peaklets)) for i in range(0, n_peaklets, batch_size)]
+        worker_inputs = {
+            "n_peaklets": n_peaklets,
+            "components": components,
+            "merged": merged,
+            "records": records,
+            "wave_pool": wave_pool,
+            "hit_merged_components": getattr(self, "_hit_merged_components", None),
+            "hit_threshold": getattr(self, "_hit_threshold", None),
+            "clip_negative_signal": bool(getattr(self, "_clip_negative_signal", False)),
+        }
 
         # Process batches in parallel
-        with Pool(n_workers) as pool:
+        with Pool(
+            n_workers, initializer=_initialize_peaklet_worker, initargs=(worker_inputs,)
+        ) as pool:
             results = pool.map(_process_peaklet_batch, batches)
 
         # Merge results from all batches
@@ -2141,7 +2142,7 @@ class PeakletWaveformPlugin(Plugin):
             # Adjust wave_offset
             if len(batch_waveforms) > 0:
                 batch_waveforms["wave_offset"] += cumulative_offset
-                batch_waveforms["peak_id"] += int(batch["peaklet_id_offset"])
+                batch_waveforms["peak_id"] += batch[0]
             all_waveforms.append(batch_waveforms)
             all_pools.append(batch_pool)
             cumulative_offset += len(batch_pool)

@@ -49,23 +49,23 @@ print(preview)
 | [`hit_merged_features`](hit_merged_features.md) | `HitMergedFeaturesPlugin` | 特征提取 | `hit_merged`, `hit_merged_components`, `hit_threshold`, `records`, `wave_pool` | `structured_array` | `static` | `1.1.3` |
 | [`hit_threshold`](hit_threshold.md) | `ThresholdHitPlugin` | 特征提取 | `records`, `wave_pool`, `records_asymmetry_mask` | `structured_array` | `static` | `1.2.2` |
 | [`peak_classification`](peak_classification.md) | `PeakClassificationPlugin` | 特征提取 | `peaks` | `structured_array` | `static` | `1.2.1` |
-| [`peaklet_channels`](peaklet_channels.md) | `PeakletChannelsPlugin` | 峰构建 | `peaklets`, `peaklet_components`, `hit_merged`, `hit_merged_components`, `hit_threshold`, `hit_merged_features`, `peaklet_features`, `records`, `wave_pool` | `structured_array` | `static` | `2.0.5` |
+| [`peaklet_channels`](peaklet_channels.md) | `PeakletChannelsPlugin` | 峰构建 | `peaklets`, `peaklet_components`, `hit_merged`, `hit_merged_components`, `hit_threshold`, `hit_merged_features`, `peaklet_features`, `records`, `wave_pool` | `structured_array` | `static` | `2.0.6` |
 | [`peaklet_components`](peaklet_components.md) | `PeakletComponentsPlugin` | 峰构建 | `hit_merged` | `structured_array` | `static` | `1.4.0` |
 | [`peaklet_features`](peaklet_features.md) | `PeakletFeaturesPlugin` | 峰构建 | `peaklet_waveforms`, `peaklet_waveform_pool`, `peaklets` | `structured_array` | `static` | `5.0.0` |
 | [`peaklet_waveform_pool`](peaklet_waveform_pool.md) | `PeakletWaveformPoolPlugin` | 峰构建 | `peaklet_waveforms` | `array` | `static` | `3.0.0` |
-| [`peaklet_waveforms`](peaklet_waveforms.md) | `PeakletWaveformPlugin` | 峰构建 | `peaklets`, `peaklet_components`, `hit_merged`, `hit_merged_components`, `hit_threshold`, `records`, `wave_pool` | `structured_array` | `static` | `2.1.1` |
+| [`peaklet_waveforms`](peaklet_waveforms.md) | `PeakletWaveformPlugin` | 峰构建 | `peaklets`, `peaklet_components`, `hit_merged`, `hit_merged_components`, `hit_threshold`, `records`, `wave_pool` | `structured_array` | `static` | `2.1.2` |
 | [`peaklets`](peaklets.md) | `PeakletPlugin` | 峰构建 | `hit_merged`, `peaklet_components` | `structured_array` | `static` | `1.2.0` |
 | [`peaks`](peaks.md) | `PeaksPlugin` | 特征提取 | `peaklets`, `peaklet_features`, `peaklet_channels` | `structured_array` | `static` | `5.0.0` |
-| [`position_reconstruction`](position_reconstruction.md) | `PositionReconstructionPlugin` | 其他 | `s1_s2_pairs`, `peaklet_channels` | `structured_array` | `static` | `0.4.0` |
+| [`position_reconstruction`](position_reconstruction.md) | `PositionReconstructionPlugin` | 其他 | `s1_s2_pairs`, `peaklet_channels` | `structured_array` | `static` | `0.5.0` |
 | [`raw_files`](raw_files.md) | `RawFileNamesPlugin` | 数据加载 | - | `list` | `static` | `0.0.2` |
-| [`records`](records.md) | `RecordsPlugin` | 记录处理 | `raw_files` | `structured_array` | `static` | `0.14.3` |
+| [`records`](records.md) | `RecordsPlugin` | 记录处理 | `raw_files` | `structured_array` | `static` | `0.14.4` |
 | [`records_asymmetry_mask`](records_asymmetry_mask.md) | `RecordsAsymmetryMaskPlugin` | 记录处理 | `records`, `wave_pool` | `array` | `static` | `0.2.0` |
 | [`records_detector_mask`](records_detector_mask.md) | `RecordsDetectorMaskPlugin` | 记录处理 | `records`, `records_asymmetry_mask` | `array` | `static` | `0.1.0` |
 | [`records_veto_mask`](records_veto_mask.md) | `RecordsVetoMaskPlugin` | 记录处理 | `records`, `records_asymmetry_mask` | `array` | `static` | `0.1.0` |
 | [`s1_s2_pair_candidates`](s1_s2_pair_candidates.md) | `S1S2PairCandidatesPlugin` | 事件分析 | `peak_classification`, `peaks` | `structured_array` | `static` | `0.2.0` |
 | [`s1_s2_pairs`](s1_s2_pairs.md) | `S1S2PairSelectionPlugin` | 事件分析 | `s1_s2_pair_candidates` | `structured_array` | `static` | `0.3.0` |
 | [`st_waveforms`](st_waveforms.md) | `WaveformsPlugin` | 波形处理 | `raw_files` | `structured_array` | `static` | `0.10.0` |
-| [`wave_pool`](wave_pool.md) | `WavePoolPlugin` | 波形处理 | `raw_files` | `array` | `static` | `0.14.3` |
+| [`wave_pool`](wave_pool.md) | `WavePoolPlugin` | 波形处理 | `raw_files` | `array` | `static` | `0.14.4` |
 | [`wave_pool_filtered`](wave_pool_filtered.md) | `WavePoolFilteredPlugin` | 波形处理 | `records`, `wave_pool` | `array` | `static` | `3.0.0` |
 | [`waveform_width`](waveform_width.md) | `WaveformWidthPlugin` | 波形处理 | `hit`, `st_waveforms` | `structured_array` | `static` | `3.0.0` |
 | [`waveform_width_integral`](waveform_width_integral.md) | `WaveformWidthIntegralPlugin` | 波形处理 | `records`, `wave_pool` | `structured_array` | `static` | `2.7.0` |

@@ -4,6 +4,7 @@ import pytest
 from tests.utils import DummyContext, make_hit, make_records
 from waveform_analysis.core.plugins.builtin.cpu.hit_merged_features import (
     HIT_MERGED_FEATURES_DTYPE,
+    HitMergedFeaturesPlugin,
 )
 from waveform_analysis.core.plugins.builtin.cpu.peaklet_channels import (
     PEAKLET_CHANNELS_DTYPE,
@@ -19,6 +20,8 @@ from waveform_analysis.core.plugins.builtin.hit.hit_merge import (
     HIT_MERGED_COMPONENTS_DTYPE,
     HIT_MERGED_DTYPE,
 )
+from waveform_analysis.core.plugins.builtin.peaklet_features.plugin import PeakletFeaturesPlugin
+from waveform_analysis.core.plugins.builtin.peaklet_waveforms.plugin import PeakletWaveformPlugin
 from waveform_analysis.core.plugins.builtin.shared.waveform_merge import (
     WaveformOverlapConflictError,
 )
@@ -397,6 +400,58 @@ def test_peaklet_channels_reuses_single_record_feature_without_waveform_dependen
     assert len(out) == 1
     assert float(out[0]["area"]) == 30.0
     assert float(out[0]["height"]) == 20.0
+
+
+@pytest.mark.parametrize("config_style", ["global", "nested", "namespaced"])
+@pytest.mark.parametrize("normalize_to_pe", [False, True])
+def test_peaklet_channels_keeps_adc_units_with_calibrated_hit_features(
+    config_style, normalize_to_pe
+):
+    hit_config = {"normalize_to_pe": normalize_to_pe, "gain_adc_per_pe": {"0:0": 2.0}}
+    if config_style == "nested":
+        config = {"hit_merged_features": hit_config}
+    elif config_style == "namespaced":
+        config = {f"hit_merged_features.{key}": value for key, value in hit_config.items()}
+    else:
+        config = hit_config
+    merged = np.zeros(1, dtype=HIT_MERGED_DTYPE)
+    merged["sample_start"] = 1
+    merged["sample_end"] = 4
+    merged["time_start"] = 2_000
+    merged["time_end"] = 8_000
+    merged["dt"] = 2
+    merged["component_count"] = 1
+    merged["is_single_record"] = True
+    records = make_records(n_records=1, event_length=5, baseline=100.0, dt=2)
+    records["polarity"] = "negative"
+    ctx = DummyContext(
+        config,
+        {
+            "peaklets": _peaklets([60.0]),
+            "peaklet_components": _components([(0, 0)]),
+            "hit_merged": merged,
+            "hit_merged_components": np.array([(0, 0)], dtype=HIT_MERGED_COMPONENTS_DTYPE),
+            "hit_threshold": np.array(
+                [make_hit(record_id=0, edge_start=1, edge_end=4)], dtype=THRESHOLD_HIT_DTYPE
+            ),
+            "records": records,
+            "wave_pool": np.array([100, 90, 70, 80, 100], dtype=np.uint16),
+        },
+    )
+    features = HitMergedFeaturesPlugin().compute(ctx, "run_001")
+    ctx._data["hit_merged_features"] = features
+    rows, pool = PeakletWaveformPlugin().build_pair(ctx, "run_001")
+    ctx._data["peaklet_waveforms"] = rows
+    ctx._data["peaklet_waveform_pool"] = pool
+    ctx._data["peaklet_features"] = PeakletFeaturesPlugin().compute(ctx, "run_001")
+
+    assert float(features[0]["area"]) == (30.0 if normalize_to_pe else 60.0)
+    assert float(ctx._data["peaklet_features"][0]["area"]) == 60.0
+    out = PeakletChannelsPlugin().compute(ctx, "run_001")
+
+    assert float(out[0]["area"]) == 60.0
+    assert float(out[0]["height"]) == 30.0
+    assert float(out[0]["area_fraction"]) == 1.0
 
 
 def test_peaklet_channels_rejects_invalid_features_that_break_area_conservation():

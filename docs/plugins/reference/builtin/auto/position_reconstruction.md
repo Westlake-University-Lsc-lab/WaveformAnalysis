@@ -5,7 +5,7 @@ profile: "auto"
 provides: "position_reconstruction"
 plugin_class: "PositionReconstructionPlugin"
 module: "waveform_analysis.core.plugins.builtin.position_reconstruction.plugin"
-version: "0.4.0"
+version: "0.5.0"
 summary: "Reconstruct 3D position from S1-S2 pairs using vectorized CoG method"
 depends_on: ["s1_s2_pairs", "peaklet_channels"]
 declared_depends_on: ["s1_s2_pairs", "peaklet_channels"]
@@ -17,7 +17,7 @@ output_kind: "structured_array"
 execution_kind: "static"
 narrative_source: "source"
 narrative_source_reason: null
-source_fingerprint: "f20c76e90074744afc736f96da93d7c411de9c26a3b3e9d105415a01f3293de9"
+source_fingerprint: "682d2476ed6150ab6638657ae1f4ce9c91a20a24def28d8c71751419ff9e2760"
 generated: true
 ---
 # position_reconstruction
@@ -44,7 +44,7 @@ v0.2.0 功能: - Z 坐标: 基于 drift_time * drift_velocity（向量化） - X
 | Provides | `position_reconstruction` |
 | Plugin Class | `PositionReconstructionPlugin` |
 | Module | `waveform_analysis.core.plugins.builtin.position_reconstruction.plugin` |
-| Version | `0.4.0` |
+| Version | `0.5.0` |
 | Category | 其他 |
 | Output Container | `structured_array` |
 | Execution Mode | `static` |
@@ -53,7 +53,7 @@ v0.2.0 功能: - Z 坐标: 基于 drift_time * drift_velocity（向量化） - X
 | Timeout | `none` |
 | Side Effect | no |
 | Narrative Source | `source` |
-| Source Fingerprint | `f20c76e90074744afc736f96da93d7c411de9c26a3b3e9d105415a01f3293de9` |
+| Source Fingerprint | `682d2476ed6150ab6638657ae1f4ce9c91a20a24def28d8c71751419ff9e2760` |
 
 ### Dependencies
 
@@ -73,8 +73,9 @@ v0.2.0 功能: - Z 坐标: 基于 drift_time * drift_velocity（向量化） - X
 
 | Name | Type | Default | Unit | Tracked | Deprecated | Description |
 | --- | --- | --- | --- | --- | --- | --- |
+| `detector_geometry` | `dict` | `None` | - | yes | no | PMT 几何、硬件通道映射及相对增益；未设置时使用七 PMT 布局 |
 | `drift_velocity` | `float` | `0.0013` | - | yes | no | 漂移速度 (mm/ns)，用于 Z 坐标计算。典型值：液氙 ~0.001 mm/ns, 液氩 ~0.0013 mm/ns；范围：0.0 至 +∞ |
-| `min_s2_area_for_xy` | `float` | `100.0` | - | yes | no | XY 重建所需的最小 S2 面积 (PE)；范围：0.0 至 +∞ |
+| `min_s2_area_for_xy` | `float` | `100.0` | - | yes | no | XY 重建所需的最小 S2 面积 (ADC counts，与 s2_area 一致)；范围：0.0 至 +∞ |
 | `edge_threshold_mm` | `float` | `5.0` | - | yes | no | 边缘事件判定阈值：距离 TPC 边界的最小距离 (mm)；范围：0.0 至 +∞ |
 | `detector_radius_mm` | `float` | `62.5` | - | yes | no | 探测器有效半径 (mm)，用于边缘事件检测；范围：0.0 至 +∞ |
 ## Output

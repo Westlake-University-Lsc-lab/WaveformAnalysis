@@ -363,6 +363,8 @@ def _build_records_bundle(
         channel_workers=channel_workers,
         channel_executor=channel_executor,
         profiler=profiler,
+        keep_on_disk=context.get_config(plugin, "keep_on_disk"),
+        memory_budget_gb=context.get_config(plugin, "memory_budget_gb"),
     )
     bundle = _apply_records_polarity(context, run_id, bundle)
     context._set_data(run_id, cache_key, bundle)
@@ -482,7 +484,7 @@ class _RecordsBundlePluginBase(Plugin):
             "Use 'st_waveforms' for the materialized waveform path.",
         ),
     }
-    version = "0.14.3"
+    version = "0.14.4"
 
     def resolve_depends_on(self, context: Any, run_id: str | None = None) -> list[str]:
         """Resolve raw-file upstream data for shared records bundle outputs."""

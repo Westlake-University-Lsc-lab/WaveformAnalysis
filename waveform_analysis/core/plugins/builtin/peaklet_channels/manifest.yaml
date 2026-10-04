@@ -1,6 +1,6 @@
 provides: peaklet_channels
 plugin_class: PeakletChannelsPlugin
-version: 2.0.5
+version: 2.0.6
 depends_on:
   - peaklets
   - peaklet_components
@@ -14,3 +14,4 @@ depends_on:
 third_party_dependencies:
   - numpy
 plugin_dependencies:
+  - hit_merged_features

@@ -40,6 +40,7 @@ class RecordsPlugin(_RecordsBundlePluginBase):
             "返回结果：输出按行对齐的 `RECORDS_DTYPE` 元数据数组，行序即后续 `record_id` 对齐约定。",
         ],
         "behavior_notes": [
+            "Non-V1725 raw_files builds honor keep_on_disk and memory_budget_gb; disk output stays readable until bundle cleanup, while temporary input shards are reclaimed after merging.",
             "V1725 disk builds validate merged counts, file sizes and wave bounds before reclaiming owned input shards and records-only batches; final files remain readable until bundle cleanup.",
             "The plugin never re-parses raw waveforms itself; it only materializes the record metadata view from the shared bundle.",
             "Single-part `RecordsBundleRef` returns a memmap over `records_path` (zero-copy); multi-part falls back to a merged metadata-only view.",
@@ -67,7 +68,7 @@ class RecordsPlugin(_RecordsBundlePluginBase):
             "input_source": "records bundle 输入源：'raw_files' 或 'st_waveforms'（V1725 仅支持 'raw_files'）。",
             "dt": "采样间隔（ns），写回 records.dt；缺省取适配器采样率或 1ns。",
             "keep_on_disk": "是否保持 bundle 磁盘驻留；None 时 V1725 默认 True、其余适配器默认 False。",
-            "memory_budget_gb": "内存驻留 records bundle 的内存预算（GB）。",
+            "memory_budget_gb": "非 V1725 raw_files 在 keep_on_disk=None 时检查内存预算（GB）；显式 True/False 沿用磁盘/内存模式。",
             "baseline_samples": "基线范围：int（距适配器起始的采样数）或 (start, end) 元组，相对 samples_start。",
             "channel_workers / channel_executor / n_jobs / use_process_pool": "通道级与文件级加载/合并不的并行控制参数（不参与血缘 track）。",
             "v1725_part_size": "V1725 每文件 records 分片的最大波形数；<=0 表示每文件一个分片。",

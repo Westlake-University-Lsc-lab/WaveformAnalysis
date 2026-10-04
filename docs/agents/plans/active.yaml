@@ -50,6 +50,14 @@ active_plans:
   condition: —
   task_file: docs/agents/runs/current/managed-workflow-mvp/task.yaml
   legacy_plan: docs/agents/runs/current/managed-workflow-mvp/legacy-plan.md
+- task_id: reconstruction-review-fixes
+  state: completed
+  route: modify_plugin
+  workflow_cost: strict
+  workflow_shape: staged
+  condition: —
+  task_file: docs/agents/runs/current/reconstruction-review-fixes/task.yaml
+  legacy_plan: docs/agents/runs/current/reconstruction-review-fixes/legacy-plan.md
 - task_id: release-v2.0.0
   state: completed
   route: release_artifact_sync

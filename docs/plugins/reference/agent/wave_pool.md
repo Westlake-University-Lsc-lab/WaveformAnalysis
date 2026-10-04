@@ -5,7 +5,7 @@ profile: "agent"
 provides: "wave_pool"
 plugin_class: "WavePoolPlugin"
 module: "waveform_analysis.core.plugins.builtin.wave_pool.plugin"
-version: "0.14.3"
+version: "0.14.4"
 summary: "Build wave_pool from the shared internal records bundle."
 depends_on: []
 declared_depends_on: []
@@ -36,7 +36,7 @@ WavePoolPlugin 把共享 RecordsBundle 中的原始 ADC 波形样本暴露为正
 | Provides | `wave_pool` |
 | Plugin Class | `WavePoolPlugin` |
 | Module | `waveform_analysis.core.plugins.builtin.wave_pool.plugin` |
-| Version | `0.14.3` |
+| Version | `0.14.4` |
 | Category | 波形处理 |
 | Output Container | `array` |
 | Execution Mode | `static` |

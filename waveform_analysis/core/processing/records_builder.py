@@ -1673,7 +1673,9 @@ def build_records_from_raw_files_streaming(
     channel_workers: int | None = None,
     channel_executor: str = "thread",
     profiler=None,
-) -> RecordsBundle:
+    keep_on_disk: bool | None = None,
+    memory_budget_gb: float = 50.0,
+) -> RecordsBundle | RecordsBundleRef:
     _validate_baseline_samples(baseline_samples)
 
     timer = profiler.timeit if profiler else None
@@ -1780,7 +1782,10 @@ def build_records_from_raw_files_streaming(
         with timer("records.merge") if timer else nullcontext():
             return _merge_records_part_refs(
                 part_refs,
-                output_dir=part_dir,
+                keep_on_disk=keep_on_disk,
+                memory_budget_gb=memory_budget_gb,
+                # Disk output owns a separate directory beyond the input parts' lifetime.
+                output_dir=None if keep_on_disk else part_dir,
                 n_workers=channel_workers,
                 executor_type=channel_executor,
             )
@@ -2325,7 +2330,9 @@ def build_records_from_raw_files(
     channel_workers: int | None = None,
     channel_executor: str = "thread",
     profiler=None,
-) -> RecordsBundle:
+    keep_on_disk: bool | None = None,
+    memory_budget_gb: float = 50.0,
+) -> RecordsBundle | RecordsBundleRef:
     """Build records + wave_pool from raw files using the streaming part builder."""
     return build_records_from_raw_files_streaming(
         raw_files=raw_files,
@@ -2342,6 +2349,8 @@ def build_records_from_raw_files(
         channel_workers=channel_workers,
         channel_executor=channel_executor,
         profiler=profiler,
+        keep_on_disk=keep_on_disk,
+        memory_budget_gb=memory_budget_gb,
     )
 
 

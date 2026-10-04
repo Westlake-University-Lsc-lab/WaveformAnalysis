@@ -1,6 +1,6 @@
 provides: position_reconstruction
 plugin_class: PositionReconstructionPlugin
-version: 0.4.0
+version: 0.5.0
 depends_on:
   - s1_s2_pairs
   - peaklet_channels

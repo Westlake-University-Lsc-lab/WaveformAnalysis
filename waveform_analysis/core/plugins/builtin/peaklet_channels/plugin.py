@@ -11,6 +11,9 @@ from waveform_analysis.core.plugins.builtin.cpu._wave_source import (
     load_wave_input,
     resolve_wave_input_spec,
 )
+from waveform_analysis.core.plugins.builtin.hit_merged_features.plugin import (
+    HitMergedFeaturesPlugin,
+)
 from waveform_analysis.core.plugins.builtin.shared.canonical_waveform_numba import (
     MAX_CANONICAL_DENSE_SAMPLES_PER_BATCH,
     classify_dense_canonical_groups,
@@ -298,10 +301,11 @@ def _mark_waveform_rebuild_groups_kernel(
     merged_time_start,
     merged_time_end,
     rebuild_groups,
+    reuse_single_record_features,
 ):
     """Mark only channel groups whose aggregate features are insufficient.
 
-    A single record-backed merged hit can be reused exactly.  Any multi-hit
+    A single record-backed merged hit in ADC units can be reused exactly.  Any multi-hit
     group is rebuilt from samples: adding quantized float32 feature areas is
     not bitwise equivalent to the canonical float64 waveform integral.
     """
@@ -312,7 +316,7 @@ def _mark_waveform_rebuild_groups_kernel(
         if end <= start:
             rebuild_groups[group_index] = 1
             continue
-        if end - start == 1:
+        if end - start == 1 and reuse_single_record_features:
             merged_index = grouped_merged_indices[start]
             rebuild_groups[group_index] = int(
                 merged_sample_start[merged_index] < 0
@@ -500,7 +504,7 @@ class PeakletChannelsPlugin(Plugin):
         "wave_pool",
     ]
     description = "Reconstruct deduplicated per-peaklet channel waveform contributions."
-    version = "2.0.5"
+    version = "2.0.6"
     output_dtype = PEAKLET_CHANNELS_DTYPE
     save_when = "always"
 
@@ -580,6 +584,7 @@ class PeakletChannelsPlugin(Plugin):
             merged["time_start"].astype(np.int64, copy=False),
             merged["time_end"].astype(np.int64, copy=False),
             rebuild_groups,
+            not bool(context.get_config(HitMergedFeaturesPlugin(), "normalize_to_pe")),
         )
         if np.any(rebuild_groups):
             component_hits = context.get_data(run_id, "hit_merged_components")

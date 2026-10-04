@@ -1,0 +1,100 @@
+api_version: waveform-analysis/agent-task/v1
+kind: AgentTask
+metadata:
+  id: reconstruction-review-fixes
+  generation: 1
+  created_at: '2026-10-04T15:36:44Z'
+  updated_at: '2026-10-04T15:50:27Z'
+spec:
+  goal: Fix verified reconstruction cache, ADC area and bounded-memory defects before
+    integrating Jun and Junshi
+  route: modify_plugin
+  workflow_cost: strict
+  workflow_shape: staged
+  risk_level: high
+  scope:
+    base_sha: a736cde49c17ac683301c93e5d78ecbb4c613ab9
+    allowed_paths:
+    - waveform_analysis/core/plugins/builtin
+    - waveform_analysis/core/processing/records_builder.py
+    - tests
+    - docs
+  acceptance_criteria:
+  - Geometry and gain updates change position lineage and same-instance results
+  - Peaklet areas remain ADC-consistent with upstream PE normalization
+  - Raw-file records honor disk and memory settings with valid file lifetime
+  - Peaklet pool memory and worker payload duplication are reduced without changing
+    output
+  required_gates:
+  - targeted_regressions
+  - assess_change_impact
+  - schema_compat_check
+  - doc_sync
+  - doc_anchors
+  assignment:
+    planner_role: planner
+    executor_role: executor.plugin
+    reviewer_role: reviewer
+status:
+  state: completed
+  transitions:
+  - from: created
+    to: planning
+    at: '2026-10-04T15:38:08Z'
+    actor: planner
+  - from: planning
+    to: ready_for_execution
+    at: '2026-10-04T15:38:09Z'
+    actor: planner
+  - from: ready_for_execution
+    to: executing
+    at: '2026-10-04T15:38:09Z'
+    actor: executor.plugin
+  - from: executing
+    to: reviewing
+    at: '2026-10-04T15:50:27Z'
+    actor: executor.plugin
+  - from: reviewing
+    to: completed
+    at: '2026-10-04T15:50:27Z'
+    actor: reviewer
+  plan_sha256: fac43b17a66dc81ace7b4a563c257c1d2fb87c4b9e9a3015658dae3e0cac5b7a
+  execution:
+    actions_taken:
+    - Track geometry and reload layouts
+    - Keep peaklet channels in ADC units
+    - Honor records residency and memory budgets
+    - Reuse per-peaklet scratch and per-worker inputs
+    execution_backend_decision:
+      backend: numpy and numba_serial; existing process_pool fallback
+      parallel_scope: existing peaklet batch workers only
+      benchmark_required: false
+      validation: numerical equivalence and allocation/serialization regression tests
+    commands_run:
+    - 'Linux targeted reconstruction/records/accessor suite: 143 passed'
+    - 'Final peaklet channels/waveforms suite after CSR change: 60 passed'
+    - 'assess_change_impact.py --base HEAD: PASS'
+    - 'schema_compat_check.py --base HEAD --run-smoke: PASS, no dtype changes'
+    - 'Both plugin reference generators: PASS'
+    - 'check_doc_sync.sh including render and anchors: PASS'
+    - 'Ruff, Black and git diff --check: PASS'
+    open_risks:
+    - spawn retains one copy per worker; production throughput not benchmarked
+  review:
+    reviewer: /root/review_waveform
+    decision: approved
+    plan_sha256: fac43b17a66dc81ace7b4a563c257c1d2fb87c4b9e9a3015658dae3e0cac5b7a
+    gate_results:
+      targeted_regressions: PASS
+      assess_change_impact: PASS
+      schema_compat_check: PASS
+      doc_sync: PASS
+      doc_anchors: PASS
+    blocking_findings: []
+    residual_risks:
+    - spawn retains one copy per worker; production throughput not benchmarked
+    performance_style_review:
+      single_parallel_layer: pass
+      fallback_review: pass
+  approval: {}
+  handoff: {}

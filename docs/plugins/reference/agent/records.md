@@ -5,7 +5,7 @@ profile: "agent"
 provides: "records"
 plugin_class: "RecordsPlugin"
 module: "waveform_analysis.core.plugins.builtin.records.plugin"
-version: "0.14.3"
+version: "0.14.4"
 summary: "Build records (event index table) from the shared internal records bundle."
 depends_on: []
 declared_depends_on: []
@@ -17,7 +17,7 @@ output_kind: "structured_array"
 execution_kind: "static"
 narrative_source: "source"
 narrative_source_reason: null
-source_fingerprint: "9baa6b6bcdc1e993078f9423906c968e64123a86460e00a4f6080e4c21e79ed8"
+source_fingerprint: "2a37c7c0641aca73b74e381acac25b2dc227cdbb6c1b6fd4af57bdfa37675dfe"
 generated: true
 ---
 # records
@@ -36,7 +36,7 @@ records 是绝大多数 records-backed 产物的源头：波形池的切片访�
 | Provides | `records` |
 | Plugin Class | `RecordsPlugin` |
 | Module | `waveform_analysis.core.plugins.builtin.records.plugin` |
-| Version | `0.14.3` |
+| Version | `0.14.4` |
 | Category | 记录处理 |
 | Output Container | `structured_array` |
 | Execution Mode | `static` |
@@ -45,7 +45,7 @@ records 是绝大多数 records-backed 产物的源头：波形池的切片访�
 | Timeout | `none` |
 | Side Effect | no |
 | Narrative Source | `source` |
-| Source Fingerprint | `9baa6b6bcdc1e993078f9423906c968e64123a86460e00a4f6080e4c21e79ed8` |
+| Source Fingerprint | `2a37c7c0641aca73b74e381acac25b2dc227cdbb6c1b6fd4af57bdfa37675dfe` |
 
 ### Dependencies
 
@@ -75,7 +75,7 @@ records 是绝大多数 records-backed 产物的源头：波形池的切片访�
 | `records_part_size` | `int` | `250000` | - | yes | no | Max events per records shard; <=0 disables sharding. |
 | `v1725_part_size` | `int` | `20000` | - | yes | no | V1725 每文件 records 分片的最大波形数；<=0 表示每文件一个分片。 |
 | `keep_on_disk` | `any` | `True` | - | yes | no | 是否保持 bundle 磁盘驻留；None 时 V1725 默认 True、其余适配器默认 False。 |
-| `memory_budget_gb` | `float` | `50.0` | - | yes | no | 内存驻留 records bundle 的内存预算（GB）。 |
+| `memory_budget_gb` | `float` | `50.0` | - | yes | no | 非 V1725 raw_files 在 keep_on_disk=None 时检查内存预算（GB）；显式 True/False 沿用磁盘/内存模式。 |
 | `dt` | `int` | `None` | - | yes | no | 采样间隔（ns），写回 records.dt；缺省取适配器采样率或 1ns。 |
 | `baseline_samples` | `any` | `None` | - | yes | no | 基线范围：int（距适配器起始的采样数）或 (start, end) 元组，相对 samples_start。 |
 | `input_source` | `str` | `raw_files` | - | yes | no | records bundle 输入源：'raw_files' 或 'st_waveforms'（V1725 仅支持 'raw_files'）。 |
@@ -118,6 +118,7 @@ result = ctx.get_data("run_001", "records")
 
 ### Behavior
 
+- Non-V1725 raw_files builds honor keep_on_disk and memory_budget_gb; disk output stays readable until bundle cleanup, while temporary input shards are reclaimed after merging.
 - V1725 disk builds validate merged counts, file sizes and wave bounds before reclaiming owned input shards and records-only batches; final files remain readable until bundle cleanup.
 - The plugin never re-parses raw waveforms itself; it only materializes the record metadata view from the shared bundle.
 - Single-part `RecordsBundleRef` returns a memmap over `records_path` (zero-copy); multi-part falls back to a merged metadata-only view.

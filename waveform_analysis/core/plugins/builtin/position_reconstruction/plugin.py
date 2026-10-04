@@ -28,9 +28,10 @@
 - v0.2.1: 修正默认漂移速度单位，确保 drift_time_ns 输出的 Z 坐标为 mm
 - v0.3.0: 声明 peaklet_channels 依赖，使 XY 通道面积进入缓存 lineage
 - v0.4.0: 直接批量消费 peaklet_channels，移除逐事件 Accessor 构造和查询
+- v0.5.0: 几何与增益纳入配置追踪，配置变化后重新加载布局
 
 Author: Claude Code
-Version: 0.4.0
+Version: 0.5.0
 """
 
 from typing import Any
@@ -132,11 +133,16 @@ class PositionReconstructionPlugin(Plugin):
     provides = "position_reconstruction"
     depends_on = ["s1_s2_pairs", "peaklet_channels"]
     description = "Reconstruct 3D position from S1-S2 pairs using vectorized CoG method"
-    version = "0.4.0"
+    version = "0.5.0"
     save_when = "always"
     output_dtype = POSITION_RECONSTRUCTION_DTYPE
 
     options = {
+        "detector_geometry": Option(
+            default=None,
+            type=dict,
+            help="PMT 几何、硬件通道映射及相对增益；未设置时使用七 PMT 布局",
+        ),
         "drift_velocity": Option(
             default=0.0013,
             type=float,
@@ -146,7 +152,7 @@ class PositionReconstructionPlugin(Plugin):
         "min_s2_area_for_xy": Option(
             default=100.0,
             type=float,
-            help="XY 重建所需的最小 S2 面积 (PE)",
+            help="XY 重建所需的最小 S2 面积 (ADC counts，与 s2_area 一致)",
             min_value=0.0,
         ),
         "edge_threshold_mm": Option(
@@ -165,7 +171,6 @@ class PositionReconstructionPlugin(Plugin):
 
     def __init__(self):
         super().__init__()
-        self._layout_cache: PmtLayout | None = None
         self._pmt_map_cache: dict | None = None
 
     def _load_pmt_layout(self, context: Any) -> PmtLayout:
@@ -181,19 +186,13 @@ class PositionReconstructionPlugin(Plugin):
         Returns:
             PmtLayout 对象
         """
-        # 使用缓存避免重复加载
-        if self._layout_cache is not None:
-            return self._layout_cache
-
-        # 尝试从全局配置加载
-        config = context.config
-        layout = load_pmt_layout_from_config(config)
+        geometry = context.get_config(self, "detector_geometry")
+        layout = load_pmt_layout_from_config({"detector_geometry": geometry})
 
         if layout is None:
             # 回退到默认布局
             layout = load_fallback_layout()
 
-        self._layout_cache = layout
         return layout
 
     def _build_pmt_mapping(self, layout: PmtLayout) -> dict:

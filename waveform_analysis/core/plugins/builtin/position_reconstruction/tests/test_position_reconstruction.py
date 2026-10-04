@@ -121,7 +121,7 @@ def test_plugin_initialization():
 
     assert plugin.provides == "position_reconstruction"
     assert plugin.depends_on == ["s1_s2_pairs", "peaklet_channels"]
-    assert plugin.version == "0.4.0"
+    assert plugin.version == "0.5.0"
     assert plugin.output_dtype == POSITION_RECONSTRUCTION_DTYPE
 
     # 检查配置选项
@@ -237,13 +237,28 @@ def test_plugin_with_mock_data():
 
 def test_plugin_batches_peaklet_channels_and_refills_duplicate_s2_ids():
     plugin = PositionReconstructionPlugin()
-    plugin._layout_cache = PmtLayout(
-        entries=(
-            PmtEntry(1, "A", 0.0, 0.0, 0, 1, "anode", "negative", gain=1.0),
-            PmtEntry(2, "B", 10.0, 20.0, 1, 1, "anode", "negative", gain=2.0),
-        ),
-        source="test",
-    )
+    geometry = {
+        "pmt_mapping": [
+            {
+                "pmt_no": 1,
+                "pmt_id": "A",
+                "x_mm": 0.0,
+                "y_mm": 0.0,
+                "board": 0,
+                "channel": 1,
+                "gain": 1.0,
+            },
+            {
+                "pmt_no": 2,
+                "pmt_id": "B",
+                "x_mm": 10.0,
+                "y_mm": 20.0,
+                "board": 1,
+                "channel": 1,
+                "gain": 2.0,
+            },
+        ]
+    }
     pairs_dtype = np.dtype(
         [
             ("pair_id", "i8"),
@@ -278,13 +293,13 @@ def test_plugin_batches_peaklet_channels_and_refills_duplicate_s2_ids():
     channels["area"] = [-5.0, 6.0, 2.0, 100.0, 0.0]
 
     class SimpleContext:
-        config = {}
+        config = {"detector_geometry": geometry}
 
         def __init__(self):
             self.calls = []
 
         def get_config(self, current_plugin, key):
-            return current_plugin.options[key].default
+            return self.config.get(key, current_plugin.options[key].default)
 
         def get_data(self, run_id, data_name):
             self.calls.append((run_id, data_name))
