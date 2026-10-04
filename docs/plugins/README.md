@@ -8,6 +8,7 @@ WaveformAnalysis 的插件系统文档，包括教程、开发指南和参考资
 
 - [插件系统与模板 API](PLUGIN_SYSTEM_OVERVIEW.md) - 系统边界、配置、依赖、lineage、生命周期、Bundle 组织、Version 策略与 Plugin Set/Profile 的统一说明
 - [内置插件参考](reference/builtin/auto/INDEX.md) - 每个内置产物的依赖、配置和输出字段
+- [Jun 与 Junshi 位置重建](position_reconstruction_models.md) - 模型来源、输入标定、配置与验证边界
 - 交互式 Plugin DAG - 在离线 HTML 文档的插件系统页面中打开独立 DAG 工具
 
 ## 学习路径

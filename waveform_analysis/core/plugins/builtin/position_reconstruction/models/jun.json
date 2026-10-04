@@ -1,0 +1,17 @@
+{
+  "name": "Jun",
+  "method": "V3 maximum-likelihood XY grid scan with parabolic interpolation",
+  "source_repository": "https://github.com/Westlake-University-Lsc-lab/JW_XiHuTPC_MC",
+  "source_files": ["notebooks/v3.0/v3lib.py", "notebooks/v2.0/v2lib.py"],
+  "template_source": "/mnt/XiHuTPC/Geant4/data/lrf_elgap_v3.csv",
+  "qe_source": "/mnt/XiHuTPC/data/v3_sim/kr83m_meta.json:QE",
+  "qe_kind": "simulation; numpy.random.default_rng(20260819).uniform(0.28, 0.35, 7)",
+  "qe": [0.32566214159489815, 0.3058503543966956, 0.313358649879749, 0.334123762409577, 0.33034992575892796, 0.3359406084617476, 0.32852761227882454],
+  "pmt_centers_mm": [[0.0, 0.0], [28.5, 0.0], [-28.5, 0.0], [14.25, 28.5], [-14.25, 28.5], [14.25, -28.5], [-14.25, -28.5]],
+  "input_order": "Geant4 copyNo 0 through 6; hardware channel mapping must be supplied separately",
+  "template_grid_mm": 2.0,
+  "reconstruction_grid_mm": 1.0,
+  "radius_mm": 40.0,
+  "units": "input PE; output XY in mm",
+  "calibration_status": "Simulation template and simulation QE; no measured PMT response calibration"
+}

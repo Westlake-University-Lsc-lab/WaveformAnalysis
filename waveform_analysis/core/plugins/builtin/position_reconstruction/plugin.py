@@ -12,7 +12,7 @@
 
 位置重建方法：
 - Z: 基于漂移时间和漂移速度
-- XY: 电荷重心法 (Center of Gravity, CoG)
+- XY: 电荷重心法 (Center of Gravity, CoG)、Jun 最大似然、Junshi 神经网络
   使用 S2 信号在各 PMT 通道的分布，应用增益校正后计算加权重心
 
 性能优化（v0.2.0）：
@@ -29,9 +29,10 @@
 - v0.3.0: 声明 peaklet_channels 依赖，使 XY 通道面积进入缓存 lineage
 - v0.4.0: 直接批量消费 peaklet_channels，移除逐事件 Accessor 构造和查询
 - v0.5.0: 几何与增益纳入配置追踪，配置变化后重新加载布局
+- v0.6.0: 接入 Jun 与 Junshi，显式配置模型通道、面积换算与旋转
 
 Author: Claude Code
-Version: 0.5.0
+Version: 0.6.0
 """
 
 from typing import Any
@@ -83,7 +84,7 @@ POSITION_RECONSTRUCTION_DTYPE = np.dtype(
         ("z_quality", "f4"),  # Z 重建质量 (0-1)
         ("position_goodness", "f4"),  # 整体位置质量 (0-1)
         # === Reconstruction method ===
-        ("xy_method", "U16"),  # XY 重建方法: "cog", "nn", "template", "none"
+        ("xy_method", "U16"),  # XY 重建方法: "cog", "Jun", "Junshi", "none"
         ("z_method", "U16"),  # Z 重建方法: "drift_time", "corrected", "none"
         # === Input observables ===
         ("drift_time_ns", "f4"),  # 漂移时间 (ns)
@@ -125,19 +126,39 @@ class PositionReconstructionPlugin(Plugin):
     - 预计算和缓存映射关系
     - 典型性能提升: 10-100x（取决于事件数）
 
-    未来版本计划:
-    - v0.3.0: 高级 XY 重建算法 (ML, 模板匹配)
-    - v1.0.0: 位置相关修正 (电场、光收集效率)
+    可选 XY 模型:
+    - Jun: LRF 最大似然网格重建
+    - Junshi: 七 PMT 光分布神经网络
+    - 输入标定及使用示例见 docs/plugins/position_reconstruction_models.md
     """
 
     provides = "position_reconstruction"
     depends_on = ["s1_s2_pairs", "peaklet_channels"]
-    description = "Reconstruct 3D position from S1-S2 pairs using vectorized CoG method"
-    version = "0.5.0"
+    description = "Reconstruct 3D position from S1-S2 pairs using CoG, Jun or Junshi"
+    version = "0.6.0"
     save_when = "always"
     output_dtype = POSITION_RECONSTRUCTION_DTYPE
 
     options = {
+        "xy_method": Option(
+            default="cog", type=str, choices=["cog", "Jun", "Junshi"], help="XY 重建算法"
+        ),
+        "model_channels": Option(
+            default=None, type=list, help="Jun/Junshi p0..p6 顺序的七组 [board, channel]"
+        ),
+        "model_area_per_count": Option(
+            default=None, type=list, help="七路 ADC 面积/模型计数换算系数；需显式提供"
+        ),
+        "model_rotation_deg": Option(
+            default=0.0, type=float, help="模型 XY 到输出坐标的逆时针旋转角（度）"
+        ),
+        "jun_qe": Option(default=None, type=list, help="Jun 七路相对 QE；默认使用源模拟 QE"),
+        "junshi_variant": Option(
+            default="uniform",
+            type=str,
+            choices=["uniform", "per_pmt"],
+            help="Junshi 源模型的 QE 训练版本",
+        ),
         "detector_geometry": Option(
             default=None,
             type=dict,
@@ -366,6 +387,48 @@ class PositionReconstructionPlugin(Plugin):
 
         return x_array, y_array, n_channels_array
 
+    def _compute_xy_model(self, context, run_id, peak_ids, areas, min_area, model):
+        """Aggregate sparse ADC hit areas in the explicitly configured model order."""
+        channels = context.get_config(self, "model_channels")
+        scales = np.asarray(context.get_config(self, "model_area_per_count"), dtype=float)
+        if channels is None or np.asarray(channels).shape != (7, 2):
+            raise ValueError(
+                "model_channels must contain seven [board, channel] pairs in p0..p6 order"
+            )
+        if len(set(map(tuple, channels))) != 7:
+            raise ValueError("model_channels must contain seven distinct hardware channels")
+        if scales.shape != (7,) or not np.all(np.isfinite(scales) & (scales > 0)):
+            raise ValueError("model_area_per_count must contain seven positive finite scales")
+
+        xy = np.full((len(peak_ids), 2), np.nan, dtype=np.float32)
+        n_channels = np.zeros(len(peak_ids), dtype=np.int16)
+        eligible = np.isfinite(areas) & (areas >= min_area)
+        if not np.any(eligible):
+            return xy[:, 0], xy[:, 1], n_channels
+        unique_ids, inverse = np.unique(peak_ids[eligible], return_inverse=True)
+        rows = context.get_data(run_id, "peaklet_channels")
+        groups = np.searchsorted(unique_ids, rows["peaklet_id"])
+        matched = (groups < len(unique_ids)) & (
+            unique_ids[np.minimum(groups, len(unique_ids) - 1)] == rows["peaklet_id"]
+        )
+        counts = np.zeros((len(unique_ids), 7), dtype=float)
+        for column, (board, channel) in enumerate(channels):
+            use = matched & (rows["board"] == board) & (rows["channel"] == channel)
+            # Zero-hit channels stay zero; NaN/Inf reject the entire input pattern.
+            area = rows["area"][use].astype(float)
+            weights = np.where(np.isfinite(area) & (area <= 0), 0, area) / scales[column]
+            np.add.at(counts[:, column], groups[use], weights)
+        valid = np.all(np.isfinite(counts), axis=1) & (counts.sum(axis=1) > 0)
+        unique_xy = np.full((len(unique_ids), 2), np.nan)
+        if np.any(valid):
+            prediction = model.predict(counts[valid])
+            angle = np.deg2rad(context.get_config(self, "model_rotation_deg"))
+            c, s = np.cos(angle), np.sin(angle)
+            unique_xy[valid] = prediction @ np.array([[c, s], [-s, c]])
+        xy[eligible] = unique_xy[inverse]
+        n_channels[eligible] = np.count_nonzero(counts > 0, axis=1)[inverse]
+        return xy[:, 0], xy[:, 1], n_channels
+
     def compute(self, context: Any, run_id: str, **_kwargs) -> np.ndarray:
         """执行位置重建（向量化优化版本）
 
@@ -405,8 +468,7 @@ class PositionReconstructionPlugin(Plugin):
         if len(selected_pairs) == 0:
             return np.zeros(0, dtype=POSITION_RECONSTRUCTION_DTYPE)
 
-        # 加载 PMT 布局
-        layout = self._load_pmt_layout(context)
+        method = context.get_config(self, "xy_method")
 
         # 初始化结果数组
         n_events = len(selected_pairs)
@@ -429,21 +491,49 @@ class PositionReconstructionPlugin(Plugin):
         positions["z_err"] = 10.0 * drift_velocity  # 假设 10 ns 不确定度
 
         # === XY 坐标重建（批量向量化）===
-        x_array, y_array, n_channels_array = self._compute_xy_cog_vectorized(
-            context,
-            run_id,
-            selected_pairs["s2_peak_id"],
-            selected_pairs["s2_area"],
-            min_s2_area,
-            layout,
-        )
+        if method == "cog":
+            x_array, y_array, n_channels_array = self._compute_xy_cog_vectorized(
+                context,
+                run_id,
+                selected_pairs["s2_peak_id"],
+                selected_pairs["s2_area"],
+                min_s2_area,
+                self._load_pmt_layout(context),
+            )
+        else:
+            if method == "Jun":
+                from .jun import JunReconstructor
+
+                qe = context.get_config(self, "jun_qe")
+                if qe is not None:
+                    qe = np.asarray(qe, dtype=float)
+                    if qe.shape != (7,) or not np.all(np.isfinite(qe) & (qe > 0)):
+                        raise ValueError("jun_qe must contain seven positive finite values")
+                model = JunReconstructor(qe=qe)
+            elif method == "Junshi":
+                from .junshi import JunshiReconstructor
+
+                model = JunshiReconstructor(variant=context.get_config(self, "junshi_variant"))
+            else:
+                raise ValueError(f"Unknown xy_method: {method}")
+            x_array, y_array, n_channels_array = self._compute_xy_model(
+                context,
+                run_id,
+                selected_pairs["s2_peak_id"],
+                selected_pairs["s2_area"],
+                min_s2_area,
+                model,
+            )
+            detector_radius = min(detector_radius, model.radius_mm)
 
         positions["x"] = x_array
         positions["y"] = y_array
 
         # 标记 XY 方法（向量化）
-        valid_xy_mask = ~np.isnan(x_array)
-        positions["xy_method"][valid_xy_mask] = "cog"
+        valid_xy_mask = (
+            ~np.isnan(x_array) if method == "cog" else np.isfinite(x_array) & np.isfinite(y_array)
+        )
+        positions["xy_method"][valid_xy_mask] = method
         positions["xy_method"][~valid_xy_mask] = "none"
 
         # 低 S2 信号标记（向量化）
@@ -481,5 +571,10 @@ class PositionReconstructionPlugin(Plugin):
         # 质量分数：综合考虑 Z 和 XY
         positions["position_goodness"][valid_mask] = 0.9
         positions["position_goodness"][~valid_mask] = 0.1
+        if method != "cog":
+            # Source models expose positions only, without calibrated errors or GOF.
+            for field in ("x_err", "y_err", "xy_chi2", "position_goodness"):
+                positions[field] = np.nan
+            positions["xy_ndf"] = 0
 
         return positions

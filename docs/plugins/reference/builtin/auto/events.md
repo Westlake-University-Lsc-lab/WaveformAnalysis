@@ -60,7 +60,7 @@ v0.0.0 状态: - 仅建立数据结构和依赖关系 - 基本特征从输入数
 | Dependency | Version Constraint | Resolution | Required Fields | Description |
 | --- | --- | --- | --- | --- |
 | `s1_s2_pairs` | - | declared | - | Select best S1-S2 pairs from candidates |
-| `position_reconstruction` | - | declared | - | Reconstruct 3D position from S1-S2 pairs using vectorized CoG method |
+| `position_reconstruction` | - | declared | - | Reconstruct 3D position from S1-S2 pairs using CoG, Jun or Junshi |
 ### How It Works
 
 1. 执行完整事件重建

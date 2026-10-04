@@ -1,0 +1,10 @@
+{
+  "source": "Junshi Wang position_reco standalone export",
+  "source_export_date": "2026-09-14",
+  "source_model": "nn_reco_40k_perPMTQE.joblib",
+  "training_r_max_mm": 39.5,
+  "qe": [0.320, 0.307, 0.338, 0.315, 0.329, 0.302, 0.334],
+  "architecture": [7, 128, 128, 64, 2],
+  "hidden_activation": "relu",
+  "output_activation": "identity"
+}

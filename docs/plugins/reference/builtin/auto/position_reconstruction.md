@@ -5,8 +5,8 @@ profile: "auto"
 provides: "position_reconstruction"
 plugin_class: "PositionReconstructionPlugin"
 module: "waveform_analysis.core.plugins.builtin.position_reconstruction.plugin"
-version: "0.5.0"
-summary: "Reconstruct 3D position from S1-S2 pairs using vectorized CoG method"
+version: "0.6.0"
+summary: "Reconstruct 3D position from S1-S2 pairs using CoG, Jun or Junshi"
 depends_on: ["s1_s2_pairs", "peaklet_channels"]
 declared_depends_on: ["s1_s2_pairs", "peaklet_channels"]
 resolved_depends_on: ["s1_s2_pairs", "peaklet_channels"]
@@ -17,14 +17,14 @@ output_kind: "structured_array"
 execution_kind: "static"
 narrative_source: "source"
 narrative_source_reason: null
-source_fingerprint: "682d2476ed6150ab6638657ae1f4ce9c91a20a24def28d8c71751419ff9e2760"
+source_fingerprint: "e465f2f9543e540b5c8810ca0b5eede962b68d9b0d8c7d12485973444a87583a"
 generated: true
 ---
 # position_reconstruction
 
 ## Overview
 
-Reconstruct 3D position from S1-S2 pairs using vectorized CoG method
+Reconstruct 3D position from S1-S2 pairs using CoG, Jun or Junshi
 位置重建插件（向量化优化版本）
 
 从选定的 S1-S2 配对重建事件的三维空间位置。
@@ -37,14 +37,14 @@ v0.2.0 功能: - Z 坐标: 基于 drift_time * drift_velocity（向量化） - X
 
 性能优化: - 避免 Python for 循环 - 批量处理所有事件 - 预计算和缓存映射关系 - 典型性能提升: 10-100x（取决于事件数）
 
-未来版本计划: - v0.3.0: 高级 XY 重建算法 (ML, 模板匹配) - v1.0.0: 位置相关修正 (电场、光收集效率)
+可选 XY 模型: - Jun: LRF 最大似然网格重建 - Junshi: 七 PMT 光分布神经网络 - 输入标定及使用示例见 docs/plugins/position_reconstruction_models.md
 
 | Item | Value |
 | --- | --- |
 | Provides | `position_reconstruction` |
 | Plugin Class | `PositionReconstructionPlugin` |
 | Module | `waveform_analysis.core.plugins.builtin.position_reconstruction.plugin` |
-| Version | `0.5.0` |
+| Version | `0.6.0` |
 | Category | 其他 |
 | Output Container | `structured_array` |
 | Execution Mode | `static` |
@@ -53,7 +53,7 @@ v0.2.0 功能: - Z 坐标: 基于 drift_time * drift_velocity（向量化） - X
 | Timeout | `none` |
 | Side Effect | no |
 | Narrative Source | `source` |
-| Source Fingerprint | `682d2476ed6150ab6638657ae1f4ce9c91a20a24def28d8c71751419ff9e2760` |
+| Source Fingerprint | `e465f2f9543e540b5c8810ca0b5eede962b68d9b0d8c7d12485973444a87583a` |
 
 ### Dependencies
 
@@ -73,6 +73,12 @@ v0.2.0 功能: - Z 坐标: 基于 drift_time * drift_velocity（向量化） - X
 
 | Name | Type | Default | Unit | Tracked | Deprecated | Description |
 | --- | --- | --- | --- | --- | --- | --- |
+| `xy_method` | `str` | `cog` | - | yes | no | XY 重建算法；可选值：`cog`, `Jun`, `Junshi` |
+| `model_channels` | `list` | `None` | - | yes | no | Jun/Junshi p0..p6 顺序的七组 [board, channel] |
+| `model_area_per_count` | `list` | `None` | - | yes | no | 七路 ADC 面积/模型计数换算系数；需显式提供 |
+| `model_rotation_deg` | `float` | `0.0` | - | yes | no | 模型 XY 到输出坐标的逆时针旋转角（度） |
+| `jun_qe` | `list` | `None` | - | yes | no | Jun 七路相对 QE；默认使用源模拟 QE |
+| `junshi_variant` | `str` | `uniform` | - | yes | no | Junshi 源模型的 QE 训练版本；可选值：`uniform`, `per_pmt` |
 | `detector_geometry` | `dict` | `None` | - | yes | no | PMT 几何、硬件通道映射及相对增益；未设置时使用七 PMT 布局 |
 | `drift_velocity` | `float` | `0.0013` | - | yes | no | 漂移速度 (mm/ns)，用于 Z 坐标计算。典型值：液氙 ~0.001 mm/ns, 液氩 ~0.0013 mm/ns；范围：0.0 至 +∞ |
 | `min_s2_area_for_xy` | `float` | `100.0` | - | yes | no | XY 重建所需的最小 S2 面积 (ADC counts，与 s2_area 一致)；范围：0.0 至 +∞ |

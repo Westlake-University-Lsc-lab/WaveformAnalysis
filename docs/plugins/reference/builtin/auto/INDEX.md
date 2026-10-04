@@ -56,7 +56,7 @@ print(preview)
 | [`peaklet_waveforms`](peaklet_waveforms.md) | `PeakletWaveformPlugin` | 峰构建 | `peaklets`, `peaklet_components`, `hit_merged`, `hit_merged_components`, `hit_threshold`, `records`, `wave_pool` | `structured_array` | `static` | `2.1.2` |
 | [`peaklets`](peaklets.md) | `PeakletPlugin` | 峰构建 | `hit_merged`, `peaklet_components` | `structured_array` | `static` | `1.2.0` |
 | [`peaks`](peaks.md) | `PeaksPlugin` | 特征提取 | `peaklets`, `peaklet_features`, `peaklet_channels` | `structured_array` | `static` | `5.0.0` |
-| [`position_reconstruction`](position_reconstruction.md) | `PositionReconstructionPlugin` | 其他 | `s1_s2_pairs`, `peaklet_channels` | `structured_array` | `static` | `0.5.0` |
+| [`position_reconstruction`](position_reconstruction.md) | `PositionReconstructionPlugin` | 其他 | `s1_s2_pairs`, `peaklet_channels` | `structured_array` | `static` | `0.6.0` |
 | [`raw_files`](raw_files.md) | `RawFileNamesPlugin` | 数据加载 | - | `list` | `static` | `0.0.2` |
 | [`records`](records.md) | `RecordsPlugin` | 记录处理 | `raw_files` | `structured_array` | `static` | `0.14.4` |
 | [`records_asymmetry_mask`](records_asymmetry_mask.md) | `RecordsAsymmetryMaskPlugin` | 记录处理 | `records`, `wave_pool` | `array` | `static` | `0.2.0` |

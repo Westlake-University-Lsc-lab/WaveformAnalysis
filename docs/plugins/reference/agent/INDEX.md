@@ -51,7 +51,7 @@ result = ctx.get_data("run_001", "events")
 | [`peaklet_waveforms`](peaklet_waveforms.md) | `PeakletWaveformPlugin` | - | `peaklets`, `peaklet_components`, `hit_merged`, `hit_merged_components`, `hit_threshold`, `records`, `wave_pool` | `clip_negative_signal`, `use_filtered` | `structured_array` | `static` | `source` | `2.1.2` |
 | [`peaklets`](peaklets.md) | `PeakletPlugin` | `hit_merged`, `peaklet_components` | `hit_merged`, `peaklet_components` | - | `structured_array` | `static` | `source` | `1.2.0` |
 | [`peaks`](peaks.md) | `PeaksPlugin` | `peaklets`, `peaklet_features`, `peaklet_channels` | `peaklets`, `peaklet_features`, `peaklet_channels` | - | `structured_array` | `static` | `source` | `5.0.0` |
-| [`position_reconstruction`](position_reconstruction.md) | `PositionReconstructionPlugin` | `s1_s2_pairs`, `peaklet_channels` | `s1_s2_pairs`, `peaklet_channels` | - | `structured_array` | `static` | `source` | `0.5.0` |
+| [`position_reconstruction`](position_reconstruction.md) | `PositionReconstructionPlugin` | `s1_s2_pairs`, `peaklet_channels` | `s1_s2_pairs`, `peaklet_channels` | - | `structured_array` | `static` | `source` | `0.6.0` |
 | [`raw_files`](raw_files.md) | `RawFileNamesPlugin` | - | - | - | `list` | `static` | `source` | `0.0.2` |
 | [`records`](records.md) | `RecordsPlugin` | - | `raw_files` | `daq_adapter`, `input_source` | `structured_array` | `static` | `source` | `0.14.4` |
 | [`records_asymmetry_mask`](records_asymmetry_mask.md) | `RecordsAsymmetryMaskPlugin` | `records`, `wave_pool` | `records`, `wave_pool` | - | `array` | `static` | `source` | `0.2.0` |
@@ -120,7 +120,7 @@ result = ctx.get_data("run_001", "events")
 ### 其他
 
 - [`energy_reconstruction`](energy_reconstruction.md): Reconstruct energy from selected S1-S2 pairs
-- [`position_reconstruction`](position_reconstruction.md): Reconstruct 3D position from S1-S2 pairs using vectorized CoG method
+- [`position_reconstruction`](position_reconstruction.md): Reconstruct 3D position from S1-S2 pairs using CoG, Jun or Junshi
 
 ## Agent Change Checklist
 

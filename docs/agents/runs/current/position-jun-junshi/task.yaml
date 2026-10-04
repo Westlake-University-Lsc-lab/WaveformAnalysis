@@ -1,0 +1,108 @@
+api_version: waveform-analysis/agent-task/v1
+kind: AgentTask
+metadata:
+  id: position-jun-junshi
+  generation: 1
+  created_at: '2026-10-04T15:56:43Z'
+  updated_at: '2026-10-04T16:05:09Z'
+spec:
+  goal: Integrate Jun likelihood and Junshi exported neural-network reconstruction
+    with explicit input calibration
+  route: modify_plugin
+  workflow_cost: strict
+  workflow_shape: staged
+  risk_level: high
+  scope:
+    base_sha: 0ae005374f996997a4e95a76702e6505ac18d700
+    allowed_paths:
+    - waveform_analysis/core/plugins/builtin/position_reconstruction
+    - tests
+    - docs
+    - pyproject.toml
+  acceptance_criteria:
+  - Both backends reproduce source predictions
+  - Explicit channel mapping, area scales and rotation are tracked in lineage
+  - CoG default and output schema remain compatible
+  required_gates:
+  - targeted_regressions
+  - source_equivalence
+  - assess_change_impact
+  - schema_compat_check
+  - doc_sync
+  assignment:
+    planner_role: planner
+    executor_role: executor.plugin
+    reviewer_role: reviewer
+status:
+  state: completed
+  transitions:
+  - from: created
+    to: planning
+    at: '2026-10-04T15:56:43Z'
+    actor: planner
+  - from: planning
+    to: ready_for_execution
+    at: '2026-10-04T15:56:43Z'
+    actor: planner
+  - from: ready_for_execution
+    to: executing
+    at: '2026-10-04T15:56:43Z'
+    actor: executor.plugin
+  - from: executing
+    to: reviewing
+    at: '2026-10-04T16:05:09Z'
+    actor: executor.plugin
+  - from: reviewing
+    to: completed
+    at: '2026-10-04T16:05:09Z'
+    actor: reviewer
+  plan_sha256: 18a553a563922122929899794270a878a092463ae702e8966a680d3f12f7c1e7
+  execution:
+    actions_taken:
+    - Extract Jun LRF likelihood with bundled simulation template and QE
+    - Extract Junshi NN into two pickle-free numeric model resources
+    - Integrate tracked method, channel, area-scale, rotation and model settings
+    - Preserve CoG default and position output dtype; use NaN for unavailable model
+      quality
+    execution_backend_decision:
+      backend: numpy; scipy for Jun template interpolation preparation
+      parallel_scope: none; inference chunks of 256 events
+      benchmark_required: false
+      validation: source equivalence, integration and installed wheel reference predictions
+    commands_run:
+    - 'Linux targeted position/events/accessor suite: 65 passed'
+    - 'Jun source archive comparison: 12 events, max 2.402e-12 mm'
+    - 'Junshi source-model comparison: 14915 inputs, both variants max 2.843e-14 mm'
+    - 'Isolated wheel build and repository-external Linux inference: PASS; all six
+      resources present'
+    - 'assess_change_impact.py --base HEAD: PASS'
+    - 'schema_compat_check.py --base HEAD --run-smoke: PASS; public dtype unchanged,
+      new test fixture dtype only'
+    - 'Both reference generators and check_doc_sync.sh: PASS, zero anchor errors/warnings'
+    - 'Ruff, Black and git diff --check: PASS'
+    open_risks:
+    - Bundled templates and QE are simulation resources; real-detector calibration
+      and resolution remain to be evaluated
+    - Historical channel mapping and 30-degree orientation are an analysis convention,
+      not independently measured mapping
+  review:
+    reviewer: /root/review_waveform
+    decision: approved
+    plan_sha256: 18a553a563922122929899794270a878a092463ae702e8966a680d3f12f7c1e7
+    gate_results:
+      targeted_regressions: PASS
+      source_equivalence: PASS
+      assess_change_impact: PASS
+      schema_compat_check: PASS
+      doc_sync: PASS
+    blocking_findings: []
+    residual_risks:
+    - Bundled templates and QE are simulation resources; real-detector calibration
+      and resolution remain to be evaluated
+    - Historical channel mapping and 30-degree orientation are an analysis convention,
+      not independently measured mapping
+    performance_style_review:
+      single_parallel_layer: pass
+      fallback_review: pass
+  approval: {}
+  handoff: {}

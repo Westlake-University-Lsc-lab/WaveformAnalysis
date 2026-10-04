@@ -121,7 +121,7 @@ def test_plugin_initialization():
 
     assert plugin.provides == "position_reconstruction"
     assert plugin.depends_on == ["s1_s2_pairs", "peaklet_channels"]
-    assert plugin.version == "0.5.0"
+    assert plugin.version == "0.6.0"
     assert plugin.output_dtype == POSITION_RECONSTRUCTION_DTYPE
 
     # 检查配置选项
@@ -145,7 +145,7 @@ def test_plugin_empty_input():
             self._data = data_dict
 
         def get_config(self, plugin, key):
-            return self.config.get(key)
+            return self.config.get(key, plugin.options[key].default)
 
         def get_data(self, run_id, data_name):
             return self._data.get(data_name)
@@ -195,7 +195,7 @@ def test_plugin_with_mock_data():
             self._data = data_dict
 
         def get_config(self, plugin, key):
-            return self.config.get(key)
+            return self.config.get(key, plugin.options[key].default)
 
         def get_data(self, run_id, data_name):
             return self._data.get(data_name)
@@ -528,7 +528,7 @@ def test_accessor_positions_empty():
             self._data = data_dict
 
         def get_config(self, plugin, key):
-            return self.config.get(key)
+            return self.config.get(key, plugin.options[key].default)
 
         def get_data(self, run_id, data_name):
             if data_name not in self._data:
